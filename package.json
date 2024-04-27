@@ -1,0 +1,20 @@
+{
+  "name": "excalibur-stuff",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@excaliburjs/plugin-aseprite": "^0.29.0",
+    "excalibur": "^0.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@vitest/browser": "^1.5.2",
+    "playwright": "^1.43.1",
+    "vite": "^5.2.10",
+    "vitest": "^1.5.2"
+  }
+}
