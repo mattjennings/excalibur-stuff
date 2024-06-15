@@ -1,5 +1,70 @@
 import * as ex from 'excalibur'
 
+const createFragment = (args: {
+  isPostProcessor?: boolean
+  maxColors: number
+}) => {
+  const textureUniformName = args.isPostProcessor ? 'u_image' : 'u_texture'
+  const textureCoordUniformName = args.isPostProcessor ? 'v_texcoord' : 'v_uv'
+
+  return /* glsl */ `\
+    #version 300 es
+    precision highp float;
+
+    // our texture
+    uniform sampler2D ${textureUniformName};
+
+    // the texCoords passed in from the vertex shader.
+    in vec2 ${textureCoordUniformName};
+    out vec4 fragColor;
+
+    uniform float[${args.maxColors * 3}] palette;
+
+    vec4 quantize(vec4 color) {
+      return vec4(
+        floor(color.r * 255.0 + 0.5) / 255.0,
+        floor(color.g * 255.0 + 0.5) / 255.0,
+        floor(color.b * 255.0 + 0.5) / 255.0,
+        color.a
+      );
+    }
+
+    float manhattanDistance(vec3 a, vec3 b) {
+      return abs(a.r - b.r) + abs(a.g - b.g) + abs(a.b - b.b);
+    }
+
+    float euclideanDistance(vec3 a, vec3 b) {
+      return sqrt(pow(a.r - b.r, 2.0) + pow(a.g - b.g, 2.0) + pow(a.b - b.b, 2.0));
+    }
+
+    void main() {
+      vec4 color = texture(${textureUniformName}, ${textureCoordUniformName});
+      vec4 quantizedColor = quantize(color);
+
+      // find the closest color in the palette
+      float minDist = 1e10;
+      vec4 bestMatch = quantizedColor;
+
+      for (int i = 0; i < ${args.maxColors}; i++) {
+        // end of palette
+        if (palette[i * 3] == -1.0) {
+          break;
+        }
+
+        vec4 paletteColor = vec4(palette[i * 3], palette[i * 3 + 1], palette[i * 3 + 2], color.a);
+        float dist = manhattanDistance(quantizedColor.rgb, paletteColor.rgb);
+
+        if (dist < minDist) {
+          minDist = dist;
+          bestMatch = paletteColor;
+        }
+      }
+      
+      fragColor = bestMatch;
+    }
+`
+}
+
 export class ColorizePostProcessor<Palette extends string>
   implements ex.PostProcessor
 {
@@ -38,42 +103,10 @@ export class ColorizePostProcessor<Palette extends string>
   initialize(gl: WebGL2RenderingContext): void {
     this._shader = new ex.ScreenShader(
       gl,
-      /* glsl */ `\
-    #version 300 es
-    precision mediump float;
-    
-    // our texture
-    uniform sampler2D u_image;
-    
-    // the texCoords passed in from the vertex shader.
-    in vec2 v_texcoord;
-    out vec4 fragColor;
-
-    uniform float[${this.MAX_COLORS * 3}] palette;
-
-    void main() {
-      vec4 color = texture(u_image, v_texcoord);
-
-      // find the closest color in the palette
-      float minDist = 1e10;
-      int index = -1;
-      fragColor = color;
-      
-      for (int i = 0; i < ${this.MAX_COLORS}; i++) {
-        // empty color
-        if (palette[i * 3] == -1.0) {
-          break;
-        }
-
-        vec4 c = vec4(palette[i * 3], palette[i * 3 + 1], palette[i * 3 + 2] , color.a);
-        float dist = distance(color, c);
-        if (dist < minDist) {
-          minDist = dist;
-          fragColor = c;
-        }
-      }
-    }
-    `,
+      createFragment({
+        maxColors: this.MAX_COLORS,
+        isPostProcessor: true,
+      }),
     )
   }
 
@@ -103,18 +136,60 @@ export class ColorizePostProcessor<Palette extends string>
   }
 }
 
-/* Usage */
-/*
+export class ColorizeMaterial<Palette extends string> extends ex.Material {
+  private _palette!: Palette
+  private palettes: Record<Palette, ex.Color[]> = {} as any
+
+  constructor(args: {
+    current: NoInfer<Palette>
+    palettes: Record<Palette, ex.Color[]>
+    graphicsContext: ex.ExcaliburGraphicsContext
+  }) {
+    super({
+      name: 'ColorizeMaterial',
+      fragmentSource: createFragment({
+        maxColors: 85,
+      }),
+      graphicsContext: args.graphicsContext,
+    })
+    this._palette = args.current
+    this.palettes = args.palettes
+    this.setPalette(this._palette)
+  }
+
+  getPalette() {
+    return this.palettes[this._palette]
+  }
+
+  setPalette(palette: Palette) {
+    this._palette = palette
+    this.update((shader) => {
+      shader.setUniformFloatArray(
+        'palette',
+        this.getPalette().flatMap((color) => [
+          color.r / 255.0,
+          color.g / 255.0,
+          color.b / 255.0,
+        ]),
+      )
+    })
+  }
+
+  nextPalette() {
+    const keys = Object.keys(this.palettes) as Palette[]
+    const currentIndex = keys.indexOf(this._palette)
+    const nextIndex = (currentIndex + 1) % keys.length
+    this.setPalette(keys[nextIndex])
+  }
+}
+
+/* Usage (disable antialiasing on engine for best results)*/
+
+/* Postprocessor
 
 const postProcessor = new ColorizePostProcessor({
   current: 'gameboyGreen',
   palettes: {
-    gameboyGreen: [
-      ex.Color.fromRGB(8, 24, 32),
-      ex.Color.fromRGB(52, 104, 86),
-      ex.Color.fromRGB(126, 192, 112),
-      ex.Color.fromRGB(224, 248, 208),
-    ],
     gameboyGray: [
       ex.Color.fromRGB(0, 0, 0),
       ex.Color.fromRGB(85, 85, 85),
@@ -150,4 +225,25 @@ game.input.keyboard.on('press', (ev) => {
   }
 })
 
+*/
+
+/* Material
+
+  onInitialize(engine: Engine<any>): void {
+    super.onInitialize(engine)
+
+    this.graphics.material = new ColorizeMaterial({
+      current: 'gameboy',
+      palettes: {
+        gameboy: [
+          ex.Color.fromHex('#000000'),
+          ex.Color.fromHex('#545454'),
+          ex.Color.fromHex('#a9a9a9'),
+          ex.Color.fromHex('#ffffff'),
+        ],
+      },
+      graphicsContext: engine.graphicsContext,
+    })
+  }
+    
 */
