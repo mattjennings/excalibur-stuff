@@ -71,7 +71,7 @@ export class SlopesComponent extends ex.Component {
 
       contact.mtv.x = 0
       contact.mtv.y = (point.y - y) * (isColliderA ? 1 : -1)
-      
+
       // treat this collision as a flat surface
       // prevents collision system(?) from adding vel on x during resolve
       contact.normal = ex.vec(0, isColliderA ? 1 : -1)
@@ -147,26 +147,12 @@ export class SlopesSystem extends ex.System {
             !isBreakingAwayFromSlope &&
             (isMovingUpSlope || isMovingDownSlope)
           ) {
-            const velocityAlongSlope =
-              motion.vel.x * slopeDirX + motion.vel.y * slopeDirY
+            const velocityAlongSlope = motion.vel.x / slopeDirX
 
-            const newVel = ex.vec(
-              velocityAlongSlope * slopeDirX,
-              velocityAlongSlope * slopeDirY,
-            )
+            motion.vel.x = velocityAlongSlope * slopeDirX
+            motion.vel.y = velocityAlongSlope * slopeDirY
 
             slopes.isMovingAlongSlope = true
-
-            // only use the adjusted velocities if they're greater than the current
-            motion.vel.x =
-              Math.abs(motion.vel.x) < Math.abs(newVel.x)
-                ? newVel.x
-                : motion.vel.x
-
-            motion.vel.y =
-              Math.abs(motion.vel.y) < Math.abs(newVel.y)
-                ? newVel.y
-                : motion.vel.y
           }
         }
       }
