@@ -71,12 +71,10 @@ export class SlopesComponent extends ex.Component {
 
       contact.mtv.x = 0
       contact.mtv.y = (point.y - y) * (isColliderA ? 1 : -1)
-
+      
       // treat this collision as a flat surface
       // prevents collision system(?) from adding vel on x during resolve
-      if (this.vel.x === 0) {
-        contact.normal = ex.vec(0, 1 * (isColliderA ? 1 : -1))
-      }
+      contact.normal = ex.vec(0, isColliderA ? 1 : -1)
     }
   }
 
