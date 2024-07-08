@@ -158,8 +158,17 @@ export class SlopesSystem extends ex.System {
             )
 
             slopes.isMovingAlongSlope = true
-            motion.vel.x = newVel.x
-            motion.vel.y = newVel.y
+
+            // only use the adjusted velocities if they're greater than the current
+            motion.vel.x =
+              Math.abs(motion.vel.x) < Math.abs(newVel.x)
+                ? newVel.x
+                : motion.vel.x
+
+            motion.vel.y =
+              Math.abs(motion.vel.y) < Math.abs(newVel.y)
+                ? newVel.y
+                : motion.vel.y
           }
         }
       }
