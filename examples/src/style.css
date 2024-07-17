@@ -1,0 +1,28 @@
+body {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  height: 100vh;
+  background: black;
+}
+
+.invisible {
+  background: none;
+  border: none;
+  color: transparent;  
+}
+
+.slide-in {
+  animation: slide-in 0.5s forwards;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateY(300%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "dev": "vite --mode development"
   },
   "dependencies": {
     "@excaliburjs/plugin-aseprite": "^0.29.0",
@@ -14,7 +15,8 @@
     "@types/node": "^20.12.7",
     "@vitest/browser": "^1.5.2",
     "playwright": "^1.43.1",
-    "vite": "^5.2.10",
+    "prettier": "^3.3.3",
+    "vite": "^5.3.4",
     "vitest": "^1.5.2"
   }
 }
